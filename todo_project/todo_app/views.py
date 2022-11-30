@@ -2,9 +2,9 @@ from django.shortcuts import redirect, render
 
 from django.views import View
 
-from todo_app.forms import TaskForm
+from todo_app.forms import TaskForm, CommentForm
 
-from todo_app.models import Task
+from todo_app.models import Task, Comment
 
 # Create your views here.
 
@@ -37,16 +37,22 @@ class HomeView(View):
 
 
 class TaskDetailView(View):
+    '''
+    TaskDetailView provides the ability to update and delete individual Task objects from the database
+    '''
     def get(self, request, task_id):
-        '''
-        This is called a DocString...comments should be made in every method!
-        '''
+        '''The content required to render a Task object's detail page'''
         task = Task.objects.get(id=task_id)
-        task_form = TaskForm(instance=task)        
+        task_form = TaskForm(instance=task) 
+
+        comments = Comment.objects.filter(task=task)     
+        comment_form = CommentForm(task_object=task)  
 
         html_data = {
             'task_object': task,
             'form': task_form,
+            'comment_list': comments,
+            'comment_form': comment_form,
         }
         
         return render(
@@ -56,6 +62,8 @@ class TaskDetailView(View):
         )
 
     def post(self, request, task_id):
+        '''
+        This method either updates or deletes existing Task objects in the database (depending on user choice) before redirecting to the 'get' methos of the home view'''
         task = Task.objects.get(id=task_id)
 
         if 'update' in request.POST:
@@ -63,6 +71,11 @@ class TaskDetailView(View):
             task_form.save()
         elif 'delete' in request.POST:
             task.delete()
+        elif 'add' in request.POST:
+            comment_form = CommentForm(request.POST, task_object=task)
+            comment_form.save()
+
+            return redirect('task_detail', task.id)
 
         # print(request.POST)
         return redirect('home')
